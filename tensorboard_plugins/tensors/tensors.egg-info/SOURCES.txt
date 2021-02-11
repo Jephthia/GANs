@@ -1,0 +1,15 @@
+setup.py
+tensors/__init__.py
+tensors/demo.py
+tensors/plugin.py
+tensors.egg-info/PKG-INFO
+tensors.egg-info/SOURCES.txt
+tensors.egg-info/dependency_links.txt
+tensors.egg-info/entry_points.txt
+tensors.egg-info/top_level.txt
+tensors/static/app.js
+tensors/static/index.js
+tensors/static/model.js
+tensors/static/style.css
+tensors/static/views.js
+tensors/static/vue.js
