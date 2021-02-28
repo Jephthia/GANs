@@ -11,5 +11,4 @@ tensors/static/app.js
 tensors/static/index.js
 tensors/static/model.js
 tensors/static/style.css
-tensors/static/views.js
 tensors/static/vue.js

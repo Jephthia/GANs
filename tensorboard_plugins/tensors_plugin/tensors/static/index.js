@@ -14,8 +14,5 @@ export async function render() {
 
   const app = new Vue({
     el: '#app',
-    data: {
-      'hello': 'world'
-    }
   })
 }

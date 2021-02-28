@@ -1,19 +1,3 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-"""A sample plugin to demonstrate reading scalars."""
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -22,6 +6,7 @@ import mimetypes
 import os
 import numpy as np
 import tensorflow as tf
+import h5py as h5
 
 import six
 from werkzeug import wrappers
@@ -35,33 +20,27 @@ from tensorboard.plugins.scalar import metadata
 _SCALAR_PLUGIN_NAME = metadata.PLUGIN_NAME
 _PLUGIN_DIRECTORY_PATH_PART = "/data/plugin/tensors/"
 
-
 class TensorsPlugin(base_plugin.TBPlugin):
-    """Raw summary example plugin for TensorBoard."""
-
     plugin_name = "tensors"
 
     def __init__(self, context):
-        """Instantiates ExampleRawScalarsPlugin.
-
-        Args:
-          context: A base_plugin.TBContext instance.
-        """
         self._multiplexer = context.multiplexer
 
     def get_plugin_apps(self):
         return {
             "/scalars": self.scalars_route,
+            "/tensors": self.tensors_route,
             "/tags": self._serve_tags,
             "/static/*": self._serve_static_file,
         }
 
     @wrappers.Request.application
     def _serve_tags(self, request):
+        plugin_runs = self._multiplexer.PluginRunToTagToContent(self.plugin_name)
         runs = {}
 
-        for key, content in self._multiplexer.Runs().items():
-            runs[key] = content['tensors']
+        for run, tags in plugin_runs.items():
+            runs[run] = list(tags.keys())
 
         return http_util.Respond(request, runs, "application/json")
 
@@ -92,9 +71,7 @@ class TensorsPlugin(base_plugin.TBPlugin):
             )
 
     def is_active(self):
-        return bool(
-            self._multiplexer.PluginRunToTagToContent(_SCALAR_PLUGIN_NAME)
-        )
+        return bool(self._multiplexer.PluginRunToTagToContent(self.plugin_name))
 
     def frontend_metadata(self):
         return base_plugin.FrontendMetadata(es_module_path="/static/index.js")
@@ -105,13 +82,41 @@ class TensorsPlugin(base_plugin.TBPlugin):
         run = request.args.get("run")
 
         try:
-            events = self._multiplexer.Tensors(run, tag)
+            events = self._multiplexer.Tensors('.', 'test')
             result = { 'tag': tag, 'steps': {} }
-
+            print('events', len(events))
             for event in events:
+                print('step', event.step)
                 tensor = tensor_util.make_ndarray(event.tensor_proto).tolist()
                 result['steps'][event.step] = tensor
         except KeyError:
             raise errors.NotFoundError(f'No scalar data for run={run}, tag={tag}')
 
         return http_util.Respond(request, result, "application/json")
+
+    @wrappers.Request.application
+    def tensors_route(self, request):
+        log_dir = request.args.get("log_dir")
+        cursor = int(request.args.get("cursor"))
+        limit = int(request.args.get("limit"))
+        no_kernel = request.args.get("noKernel") == 'true'
+        no_bias = request.args.get("noBias") == 'true'
+
+        results = []
+
+        with h5.File(log_dir, 'r') as f:
+            # Go through the groups
+            for group_name, datasets in f.items():
+                result = { 'name': '', 'kernel': { 'steps': {} }, 'bias': { 'steps': {} } }
+                result['name'] = group_name
+                
+                # Go through the steps of this group
+                for step in range(cursor, cursor+limit):
+                    if not no_kernel and str(step) in datasets['kernel']:
+                        result['kernel']['steps'][step] = datasets['kernel'][str(step)][()].tolist()
+                    if not no_bias and str(step) in datasets['bias']:
+                        result['bias']['steps'][step] = datasets['bias'][str(step)][()].tolist()
+                        
+                results.append(result)
+
+        return http_util.Respond(request, results, "application/json")
