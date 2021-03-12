@@ -1,4 +1,4 @@
-Practice repo for GANs.
+Practice folder for GANs.
 Implemented with tensorflow and keras.
 
 Learned/did so far:
