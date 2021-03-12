@@ -1,0 +1,11 @@
+{
+    "LOG_DIR": "logs/densenet/test",
+    "TENSORBOARD_CALLBACK": true,
+    "CHECKPOINT_CALLBACK": true,
+    "BATCH_SIZE": 64,
+    "EPOCHS": 1,
+    "BLOCK_SIZES": [6,12,24,16],
+    "INIT_FILTERS": 24,
+    "GROWTH_RATE": 12,
+    "INIT_LR": 1e-02
+}
